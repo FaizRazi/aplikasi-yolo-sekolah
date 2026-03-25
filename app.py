@@ -1,9 +1,8 @@
 import streamlit as st
 from ultralytics import YOLO
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import av
 
-st.title("🔥 YOLOv8 Realtime Webcam (Streamlit)")
+st.title("🔥 YOLOv8 Realtime Webcam")
 
 @st.cache_resource
 def load_model():
@@ -14,13 +13,11 @@ model = load_model()
 
 class YOLOVideoTransformer(VideoTransformerBase):
     def transform(self, frame):
-        img = frame.to_ndarray(format="rgb24")
+        img = frame.to_ndarray(format="bgr24")
 
         results = model(img, conf=0.3)
 
         annotated = results[0].plot()
-        annotated = annotated[:, :, ::-1]  # convert ke RGB
-
         return annotated
 
 
