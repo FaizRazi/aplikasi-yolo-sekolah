@@ -1,51 +1,40 @@
-import numpy as np
-from PIL import Image
-from ultralytics import YOLO
 import streamlit as st
-# ==============================
-# 1. Load Model YOLO
-# ==============================
-# Using st.cache_resource to load the model only once for Streamlit performance
+import cv2
+from ultralytics import YOLO
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import av
+
+st.title("🔥 YOLOv8 Realtime Webcam (Streamlit)")
+
+# Load model (cache biar cepat)
 @st.cache_resource
-def load_yolo_model():
+def load_model():
     return YOLO("yolov8n.pt")
 
-model = load_yolo_model()
+model = load_model()
+
 
 # ==============================
-# 3. Jalankan Deteksi (Modified for Streamlit)
+# VIDEO TRANSFORMER (REALTIME)
 # ==============================
-def run_detection_streamlit():
-    st.title("Object Detection with YOLOv8 and Streamlit")
+class YOLOVideoTransformer(VideoTransformerBase):
+    def transform(self, frame):
+        # Ambil frame dari webcam
+        img = frame.to_ndarray(format="bgr24")
 
-    # Introduce Streamlit camera input widget
-    captured_image = st.camera_input("Ambil foto untuk deteksi objek")
+        # YOLO detection
+        results = model(img, conf=0.3)
 
-    if captured_image is not None:
-        try:
-            st.text("Melakukan deteksi...")
+        # Gambar bounding box
+        annotated = results[0].plot()
 
-            # Convert Streamlit's UploadedFile (bytes-like object) to PIL Image
-            pil_image = Image.open(captured_image)
+        return annotated
 
-            # Perform object detection
-            results = model(pil_image)
-
-            # Display results
-            for r in results:
-                # r.plot() returns an image with detections drawn, typically BGR format
-                im_array = r.plot()
-                # Convert BGR (OpenCV format) to RGB for PIL/Streamlit display
-                im = Image.fromarray(im_array[..., ::-1])
-                st.image(im, caption="Hasil Deteksi", use_column_width=True)
-
-            st.success("Deteksi Selesai.")
-
-        except Exception as err:
-            st.error(f"Terjadi kesalahan saat deteksi: {err}")
 
 # ==============================
-# 4. Eksekusi Streamlit App
+# STREAM WEBCAM
 # ==============================
-if __name__ == "__main__":
-    run_detection_streamlit()
+webrtc_streamer(
+    key="yolo",
+    video_transformer_factory=YOLOVideoTransformer
+)
