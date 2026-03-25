@@ -1,9 +1,7 @@
-import cv2
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 import streamlit as st
-
 # ==============================
 # 1. Load Model YOLO
 # ==============================
