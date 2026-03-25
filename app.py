@@ -1,40 +1,53 @@
-import streamlit as st
 import cv2
-from ultralytics import YOLO
 import numpy as np
 from PIL import Image
+from ultralytics import YOLO
+import streamlit as st
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="Deteksi YOLO Sekolah", layout="centered")
-st.title("🔍 Aplikasi Deteksi Objek Real-Time")
-st.write("Gunakan kamera laptop untuk mendeteksi objek secara otomatis.")
-
-# 1. Load Model YOLO (Versi Nano agar ringan di Cloud)
+# ==============================
+# 1. Load Model YOLO
+# ==============================
+# Using st.cache_resource to load the model only once for Streamlit performance
 @st.cache_resource
-def load_model():
-    return YOLO('yolov8n.pt')
+def load_yolo_model():
+    return YOLO("yolov8n.pt")
 
-model = load_model()
+model = load_yolo_model()
 
-# 2. Input Kamera
-img_file_buffer = st.camera_input("Klik 'Take Photo' untuk deteksi")
+# ==============================
+# 3. Jalankan Deteksi (Modified for Streamlit)
+# ==============================
+def run_detection_streamlit():
+    st.title("Object Detection with YOLOv8 and Streamlit")
 
-if img_file_buffer is not None:
-    # Proses Gambar
-    bytes_data = img_file_buffer.getvalue()
-    cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+    # Introduce Streamlit camera input widget
+    captured_image = st.camera_input("Ambil foto untuk deteksi objek")
 
-    # Prediksi
-    results = model.predict(cv2_img, conf=0.5)
+    if captured_image is not None:
+        try:
+            st.text("Melakukan deteksi...")
 
-    # Tampilkan Hasil
-    for r in results:
-        res_plotted = r.plot()
-        st.image(res_plotted, caption='Hasil Analisis YOLO', channels="BGR", use_container_width=True)
-        
-        # Tampilkan daftar benda
-        labels = [model.names[int(cls)] for cls in r.boxes.cls]
-        if labels:
-            st.success(f"Objek terdeteksi: {', '.join(set(labels))}")
-        else:
-            st.warning("Tidak ada objek yang dikenali.")
+            # Convert Streamlit's UploadedFile (bytes-like object) to PIL Image
+            pil_image = Image.open(captured_image)
+
+            # Perform object detection
+            results = model(pil_image)
+
+            # Display results
+            for r in results:
+                # r.plot() returns an image with detections drawn, typically BGR format
+                im_array = r.plot()
+                # Convert BGR (OpenCV format) to RGB for PIL/Streamlit display
+                im = Image.fromarray(im_array[..., ::-1])
+                st.image(im, caption="Hasil Deteksi", use_column_width=True)
+
+            st.success("Deteksi Selesai.")
+
+        except Exception as err:
+            st.error(f"Terjadi kesalahan saat deteksi: {err}")
+
+# ==============================
+# 4. Eksekusi Streamlit App
+# ==============================
+if __name__ == "__main__":
+    run_detection_streamlit()
